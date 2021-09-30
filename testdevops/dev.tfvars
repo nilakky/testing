@@ -1,0 +1,20 @@
+
+ env="dev"
+ rg_name = "rg-terraform"
+ vnet_name = "vnet-eastus-001"
+ snet_name_0 = "snet-eastus-001"
+ snet_name_1 = "snet-eastus-002"
+ sg_name = "sg-eastus"
+ sg_rule_80 = "sg-rule-eastus_80"
+ sg_rule_443 = "sg-rule-eastus_443"
+ nic_001="nic_eastus_001"
+ nic_002="nic_eastus_002"
+  st_name="steastussep302021"
+  vm_user="testdevops1"
+location="East US"
+os = {
+    publisher = "Canonical"
+    offer     = "UbuntuServer"
+    sku       = "16.04.0-LTS"
+    version   = "latest"
+}
