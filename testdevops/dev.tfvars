@@ -1,14 +1,7 @@
-
  env="dev"
  rg_name = "rg-terraform"
  vnet_name = "vnet-eastus-001"
- snet_name_0 = "snet-eastus-001"
- snet_name_1 = "snet-eastus-002"
  sg_name = "sg-eastus"
- sg_rule_80 = "sg-rule-eastus_80"
- sg_rule_443 = "sg-rule-eastus_443"
- nic_001="nic_eastus_001"
- nic_002="nic_eastus_002"
   st_name="steastussep302021"
   vm_user="testdevops1"
 location="East US"
@@ -18,3 +11,16 @@ os = {
     sku       = "16.04.0-LTS"
     version   = "latest"
 }
+osdisk = {
+    name = "myosdisk"
+    caching     = "ReadWrite"
+    create_option       = "FromImage"  
+    managed_disk_type="Standard_LRS" 
+}
+computer_name="testhost"
+vmname="testvm"
+private_subnet = ["10.4.0.0/29", "10.4.0.8/29"]
+nsgrules=[80,443]
+snets=2
+nodes=2
+

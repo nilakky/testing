@@ -14,39 +14,10 @@ variable "vnet_name" {
   type = string
   description = "Virtual network name"
 }
-
-variable "snet_name_0" {
-  type = string
-  description = "Subnet name 1"
-}
-
-variable "snet_name_1" {
-  type = string
-  description = "Subnet name 2"
-}
-
 variable "sg_name" {
   type = string
   description = "Network security group name"
 }
-variable "sg_rule_80" {
-  type = string
-  description = "Network security rule for 80 port"
-}
-variable "sg_rule_443" {
-  type = string
-  description = "Network security rule for 443 port"
-}
-
-variable "nic_001" {
-  type = string
-  description = "Network interface 1"
-}
-variable "nic_002" {
-  type = string
-  description = "Network interface 2"
-}
-
 variable "st_name" {
   type = string
   description = "Storage account name"
@@ -70,13 +41,40 @@ variable "os" {
         version = string
   })
 }   
-
-variable "managed_disk_type" { 
-    type = map
-    description = "Disk type Premium in Primary location Standard in DR location"
-
-    default = {
-        westus2 = "Premium_LRS"
-        eastus = "Standard_LRS"
-    }
+variable "osdisk" {
+    description = "Operating system disk"
+    type = object({
+        name = string
+        caching = string
+        create_option = string     
+         managed_disk_type=string   
+  })
+} 
+variable "vm_size" {
+    type = string
+    description = "VM size"
+    default = "Standard_DS1_v2"
+}  
+variable "private_subnet" {
+  type    = list(string)
+  default = []
+}
+variable "nodes" {
+  type  =number
+  default=1
+  description = "Number of nodes"
+}
+variable "snets" {
+  type=number
+  default=1
+  description = "Number of sub nets"
+}
+variable "nsgrules" {
+  type    = list(number)
+  default = [80]
+}
+variable "statekey" {
+  type = string
+  sensitive=true
+  description = "statekey"
 }

@@ -1,6 +1,19 @@
-
-provider "azurerm" {  
-  features {}
+terraform {
+  required_providers {
+    azurerm = {
+      source  = "hashicorp/azurerm"
+      version = "=2.78.0"
+    }
+  }
+   backend "azurerm" {
+    storage_account_name = "test"
+    container_name       = "test"
+    key                  = "terraform.tfstate"    
+    access_key = var.statekey
+  }
+}
+provider "azurerm" {    
+  features {} 
 }
 resource "azurerm_resource_group" "rgp" {
   name     = "${var.rg_name}-${var.env}"
@@ -9,166 +22,75 @@ resource "azurerm_resource_group" "rgp" {
     environment = var.env
   }
 }
+
 # Create a vnet within the resource group
 resource "azurerm_virtual_network" "vnet" {
   name = "${var.vnet_name}-${var.env}"
   resource_group_name = azurerm_resource_group.rgp.name
   location = var.location
-  address_space = ["10.10.0.0/24"]
+  address_space = ["10.4.0.0/24"]
 
   tags = {
     environment = var.env
   }
 }
-resource "azurerm_subnet" "snet1" {
-  name = "${var.snet_name_0}-${var.env}"
-  resource_group_name = azurerm_resource_group.rgp.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes = ["10.10.0.0/25"] 
-}
-resource "azurerm_subnet" "snet2" {
-  name = "${var.snet_name_1}-${var.env}"
-  resource_group_name = azurerm_resource_group.rgp.name
-  virtual_network_name = azurerm_virtual_network.vnet.name
-  address_prefixes = ["10.10.0.128/28"]
+//Create subnet
+module "subnet" {
+  source="./modules/subnet"
+   count  = var.snets
+   snet_name = "snet${format("%02d", count.index)}-${var.env}"
+  rgname = azurerm_resource_group.rgp.name
+  vnetname = azurerm_virtual_network.vnet.name
+  ipaddress = var.private_subnet[count.index]
 }
 
-#Network security group
-resource "azurerm_network_security_group" "sg" {
-  name                = "${var.sg_name}-${var.env}"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rgp.name
-
-  security_rule {
-    name                       = "${var.sg_rule_80}-${var.env}"
-    priority                   = 100
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "80"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
+//Create Virtual Machine
+module "virtual_machine" {
+  source                 = "./modules/virtual-machine"
+  count  = var.nodes
+  vmname                   = "vm${format("%02d", count.index)}"
+  rgname    = azurerm_resource_group.rgp.name
+  vm_size                = var.vm_size
+  os=var.os
+  osdisk={name="disk${format("%02d", count.index)}"
+   caching     = var.osdisk.caching
+    create_option       = var.osdisk.create_option
+    managed_disk_type=var.osdisk.managed_disk_type
   }
-   security_rule {
-    name                       = "${var.sg_rule_443}-${var.env}"
-    priority                   = 200
-    direction                  = "Inbound"
-    access                     = "Allow"
-    protocol                   = "Tcp"
-    source_port_range          = "*"
-    destination_port_range     = "443"
-    source_address_prefix      = "*"
-    destination_address_prefix = "*"
-  }
-
-  tags = {
-    environment = var.env
-  }
+  //osdisk=var.osdisk
+ 
+    computer_name  = "vm-${format("%02d", count.index)}"
+    vm_user = var.vm_user
+    vm_pwd = var.vm_pwd
+    env  = var.env
+  location=var.location
+  nicname=  "nic${format("%02d", count.index)}-${var.env}"
+  subnet_id="${module.subnet[count.index].azurerm_subnet_out}"
 }
 
-#Virtual Machine 1
-resource "azurerm_network_interface" "nic1" {
-  name                = "${var.nic_001}-${var.env}"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rgp.name
-
-  ip_configuration {
-    name                          = "testconfiguration1"
-    subnet_id                     = azurerm_subnet.snet1.id
-    private_ip_address_allocation = "Dynamic"
-  }
+//Create network security group
+module "network_securitygroup"{
+  source="./modules/network-securitygroup"
+  sg_name=var.sg_name
+  env=var.env
+  location=var.location
+  rgname=azurerm_resource_group.rgp.name
 }
-
-resource "azurerm_virtual_machine" "vm1" {
-  name                  = "vm001-${var.env}"
-  location              = var.location
-  resource_group_name   = azurerm_resource_group.rgp.name
-  network_interface_ids = [azurerm_network_interface.nic1.id]
-  vm_size               = "Standard_DS1_v2"
-
-  storage_image_reference {
-    publisher = var.os.publisher
-    offer     = var.os.offer
-    sku       = var.os.sku
-    version   = var.os.version
-  }
-  storage_os_disk {
-    name              = "myosdisk1"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = "Standard_LRS"
-  }
-  os_profile {
-    computer_name  = "testhost"
-    admin_username = var.vm_user
-    admin_password = var.vm_pwd
-  }
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
-  tags = {
-    environment = "${var.env}"
-  }
+module "network_securitygroup_rule"{
+  count="${length(var.nsgrules)}"
+  source="./modules/network-securitygroup/rules" 
+  sg_rule                       = "sgrule${format("%02d", count.index)}"
+  port=var.nsgrules[count.index]
+  priority= (100 * (count.index + 1))
+  env                   = var.env
+  rgname=azurerm_resource_group.rgp.name
+  sg_name=var.sg_name
 }
-
-
-
-#Virtual Machine 2
-resource "azurerm_network_interface" "nic2" {
-  name                = "${var.nic_002}-${var.env}"
-  location            = var.location
-  resource_group_name = azurerm_resource_group.rgp.name
-
-  ip_configuration {
-    name                          = "testconfiguration2"
-    subnet_id                     = azurerm_subnet.snet2.id
-    private_ip_address_allocation = "Dynamic"
-  }
-}
-
-resource "azurerm_virtual_machine" "vm2" {
-  name                  = "vm002-${var.env}"
-  location              = var.location
-  resource_group_name   = azurerm_resource_group.rgp.name
-  network_interface_ids = [azurerm_network_interface.nic2.id]
-  vm_size               = "Standard_DS1_v2"
-
-  storage_image_reference {
-    publisher = var.os.publisher
-    offer     = var.os.offer
-    sku       = var.os.sku
-    version   = var.os.version
-  }
-  storage_os_disk {
-    name              = "myosdisk2"
-    caching           = "ReadWrite"
-    create_option     = "FromImage"
-    managed_disk_type = lookup(var.managed_disk_type, var.location, "Standard_LRS")
-  }
-  os_profile {
-    computer_name  = "testhost1"
-    admin_username = var.vm_user
-    admin_password = var.vm_pwd
-  }
-  os_profile_linux_config {
-    disable_password_authentication = false
-  }
-  tags = {
-    environment = var.env
-  }
-}
-
 #Storage account creation
-
-resource "azurerm_storage_account" "st" {
-  name                     = var.st_name
-  resource_group_name      = azurerm_resource_group.rgp.name
-  location                 = var.location
-  account_tier             = "Standard"
-  account_replication_type = "GRS"
-
-  tags = {
-    environment = var.env
-  }
+module "storage_account" {
+  source    = "./modules/storage-account"
+  stname    = var.st_name
+  rgname    = azurerm_resource_group.rgp.name
+  location  = azurerm_resource_group.rgp.location
+  env=var.env
 }
