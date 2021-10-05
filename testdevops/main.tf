@@ -57,8 +57,6 @@ module "virtual_machine" {
     create_option       = var.osdisk.create_option
     managed_disk_type=var.osdisk.managed_disk_type
   }
-  //osdisk=var.osdisk
- 
     computer_name  = "vm-${format("%02d", count.index)}"
     vm_user = var.vm_user
     vm_pwd = var.vm_pwd
