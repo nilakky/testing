@@ -73,8 +73,3 @@ variable "nsgrules" {
   type    = list(number)
   default = [80]
 }
-variable "statekey" {
-  type = string
-  sensitive=true
-  description = "statekey"
-}

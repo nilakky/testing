@@ -9,7 +9,7 @@ terraform {
     storage_account_name = "test"
     container_name       = "test"
     key                  = "terraform.tfstate"    
-    access_key = var.statekey
+    access_key = "key"
   }
 }
 provider "azurerm" {    
