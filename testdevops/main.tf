@@ -1,20 +1,14 @@
 terraform {
-  required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "=2.78.0"
-    }
-  }
    backend "azurerm" {
-    storage_account_name = "test"
-    container_name       = "test"
-    key                  = "terraform.tfstate"    
-    access_key = "key"
+    storage_account_name = "sttrtst"
+    container_name       = "trf"
+    key                  = "terraform.tfstate"     
   }
 }
 provider "azurerm" {    
   features {} 
 }
+
 resource "azurerm_resource_group" "rgp" {
   name     = "${var.rg_name}-${var.env}"
   location = var.location
@@ -57,6 +51,8 @@ module "virtual_machine" {
     create_option       = var.osdisk.create_option
     managed_disk_type=var.osdisk.managed_disk_type
   }
+  //osdisk=var.osdisk
+ 
     computer_name  = "vm-${format("%02d", count.index)}"
     vm_user = var.vm_user
     vm_pwd = var.vm_pwd
